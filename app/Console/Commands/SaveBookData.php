@@ -150,7 +150,7 @@ class SaveBookData extends Command
             // 出版情報
             $bookImprint = $onix['PublishingDetail']['Imprint']['ImprintName'] ?? null;
             $bookPublisher = $onix['PublishingDetail']['Publisher']['PublisherName'] ?? null;
-            $bookPrice = $this->normalizeNumber($onix['ProductSupply']['SupplyDetail']['Price'][0]['PriceAmount'] ?? null);
+            $bookPrice = $this->normalizeNumber($onix['ProductSupply']['SupplyDetail']['Price'][0]['PriceAmount'] ?? null) ?: 0;
             $bookDate = $this->normalizeNumber($onix['PublishingDetail']['PublishingDate'][0]['Date'] ?? null);
 
             // 書影
@@ -249,7 +249,7 @@ class SaveBookData extends Command
         $bookImprint = $onix['PublishingDetail']['Imprint']['ImprintName'] ?? null;
         $bookPublisher = $onix['PublishingDetail']['Publisher']['PublisherName'] ?? null;
         $bookPicture = $this->getBookImage($isbn);
-        $bookPrice = $this->normalizeNumber($onix['ProductSupply']['SupplyDetail']['Price'][0]['PriceAmount'] ?? null);
+        $bookPrice = $this->normalizeNumber($onix['ProductSupply']['SupplyDetail']['Price'][0]['PriceAmount'] ?? null) ?: 0;
         $bookDate = $this->normalizeNumber($onix['PublishingDetail']['PublishingDate'][0]['Date'] ?? null);
 
         // 対象読者
@@ -326,7 +326,14 @@ class SaveBookData extends Command
             }
         }
 
-        return strip_tags($bookContent, '<br>');
+        $bookContent = strip_tags($bookContent, '<br>');
+
+        // TEXT型の最大値(65,535バイト)を超える場合は切り捨て
+        if (strlen($bookContent) > 65535) {
+            $bookContent = mb_strcut($bookContent, 0, 65535);
+        }
+
+        return $bookContent;
     }
 
     /**
@@ -354,6 +361,9 @@ class SaveBookData extends Command
             }
             if ($schemeId == 20) {
                 $subjectWord = $subjects[$i]['SubjectHeadingText'] ?? null;
+                if ($subjectWord !== null) {
+                    $subjectWord = mb_substr($subjectWord, 0, 250);
+                }
             }
         }
 

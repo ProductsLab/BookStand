@@ -1,10 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
+use App\Http\Controllers\BookController;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'laravelVersion' => app()->version(),
-    ]);
-});
+Route::get('/', [BookController::class, 'index'])->name('home');
+Route::get('/books/search', [BookController::class, 'index'])->name('books.search');

@@ -210,8 +210,9 @@ const goToPage = (url) => {
 
         <div v-else class="flex flex-col gap-4">
           <div v-for="book in books.data" :key="book.id" class="card card-side bg-base-100 shadow-sm border border-base-300 rounded-none overflow-hidden">
-            <figure v-if="book.image_url" class="w-48 shrink-0 border-r border-base-300">
-              <img :src="book.image_url" :alt="book.title" class="object-cover w-full h-full" />
+            <figure class="w-48 shrink-0 border-r border-base-300">
+              <img v-if="book.image_url && book.image_url !== 'no_image'" :src="book.image_url" :alt="book.title" class="object-cover w-full h-full" />
+              <img v-else src="/images/no_image.png" :alt="book.title" class="object-cover w-full h-full" />
             </figure>
             <div class="card-body p-6">
               <h2 class="text-xl font-bold mb-1">

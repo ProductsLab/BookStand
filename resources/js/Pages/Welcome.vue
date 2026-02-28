@@ -1,8 +1,19 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
+const props = defineProps({
+  books: {
+    type: Object,
+    default: () => ({ data: [], links: [] })
+  },
+  filters: {
+    type: Object,
+    default: () => ({ conditions: [] })
+  },
+  laravelVersion: String
+});
 
 // 検索条件の初期値
 const createEmptyCondition = () => ({
@@ -14,8 +25,12 @@ const createEmptyCondition = () => ({
 // 検索条件のリスト（初期は空）
 const searchConditions = ref([]);
 
-// 検索結果フラグ
-const searchResults = ref(null);
+// コンポーネントマウント時にフィルターが渡されていれば反映する
+onMounted(() => {
+  if (props.filters && props.filters.conditions && props.filters.conditions.length > 0) {
+    searchConditions.value = props.filters.conditions;
+  }
+});
 
 // 条件を追加
 const addCondition = () => {
@@ -30,7 +45,7 @@ const removeCondition = (index) => {
 // 検索条件をリセット
 const resetConditions = () => {
   searchConditions.value = [];
-  searchResults.value = null;
+  router.get('/', {}, { preserveState: true });
 };
 
 // 検索実行
@@ -49,14 +64,21 @@ const search = () => {
     }))
   };
 
-  console.log('検索条件:', validConditions.length === 0 ? '全件検索' : searchData);
+  // Inertia.jsでバックエンドAPIに送信
+  router.get('/books/search', searchData, {
+    preserveState: true,
+    replace: true
+  });
+};
 
-  // TODO: Inertia.jsでバックエンドAPIに送信
-  // 条件が空の場合は全件検索
-  // router.get('/books/search', searchData);
-
-  // 仮の検索結果表示
-  searchResults.value = true;
+// ページネーションリンク用ヘルパー
+const goToPage = (url) => {
+  if (url) {
+    router.visit(url, {
+      preserveScroll: true,
+      preserveState: true,
+    });
+  }
 };
 </script>
 
@@ -174,17 +196,59 @@ const search = () => {
         </div>
       </div>
 
-      <!-- 検索結果エリア (実装予定) -->
-      <div v-if="searchResults" class="card bg-base-100 shadow-xl">
+      <!-- 検索結果エリア -->
+      <div v-if="books && books.data" class="card bg-base-100 shadow-xl">
         <div class="card-body">
-          <h2 class="card-title text-2xl mb-4">検索結果</h2>
-          <div class="alert alert-info">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-              class="stroke-current shrink-0 w-6 h-6">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <span>検索機能は実装予定です。バックエンドAPIと連携します。</span>
+          <h2 class="card-title text-2xl mb-4">検索結果 ({{ books.total }}件)</h2>
+
+          <div v-if="books.data.length === 0" class="alert alert-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <span>該当する書籍が見つかりませんでした。条件を変更して再検索してください。</span>
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="table table-zebra w-full">
+              <thead>
+                <tr>
+                  <th>ISBN</th>
+                  <th>タイトル</th>
+                  <th>著者</th>
+                  <th>出版社</th>
+                  <th>出版日</th>
+                  <th>価格</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="book in books.data" :key="book.id">
+                  <td>{{ book.isbn }}</td>
+                  <td class="font-bold">{{ book.title }}<br><span class="text-sm font-normal text-gray-500" v-if="book.subtitle">{{ book.subtitle }}</span></td>
+                  <td>{{ book.contributor }}</td>
+                  <td>{{ book.publisher }}</td>
+                  <td>{{ book.published_date }}</td>
+                  <td>{{ book.price ? `${book.price}円` : '-' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- ページネーション -->
+          <div class="flex justify-center mt-6" v-if="books.links && books.links.length > 3">
+            <div class="join">
+              <template v-for="(link, i) in books.links" :key="i">
+                <button
+                  v-if="link.url"
+                  @click="goToPage(link.url)"
+                  class="join-item btn"
+                  :class="{'btn-active': link.active}"
+                  v-html="link.label"
+                ></button>
+                <button
+                  v-else
+                  class="join-item btn btn-disabled"
+                  v-html="link.label"
+                ></button>
+              </template>
+            </div>
           </div>
         </div>
       </div>

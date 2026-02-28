@@ -32,6 +32,7 @@ const props = defineProps({
   menuItems: {
     type: Array,
     default: () => [
+      { name: '本を探す', href: '/' },
       { name: '今日の本', href: '/today' },
       { name: '明日の本', href: '/tomorrow' }
     ]

@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
+import qs from 'qs';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({
@@ -65,7 +66,7 @@ const search = () => {
   };
 
   // Inertia.jsでバックエンドAPIに送信
-  router.get('/books/search', searchData, {
+  router.get(`/books/search?${qs.stringify(searchData)}`, {}, {
     preserveState: true,
     replace: true
   });
@@ -197,58 +198,64 @@ const goToPage = (url) => {
       </div>
 
       <!-- 検索結果エリア -->
-      <div v-if="books && books.data" class="card bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title text-2xl mb-4">検索結果 ({{ books.total }}件)</h2>
+      <div v-if="books && books.data">
+        <div class="alert bg-[#e2f0e0] text-[#1a5b1a] rounded border-none mb-6 p-4 text-lg">
+          検索結果 ({{ books.total }}件)
+        </div>
 
-          <div v-if="books.data.length === 0" class="alert alert-warning">
-            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-            <span>該当する書籍が見つかりませんでした。条件を変更して再検索してください。</span>
-          </div>
+        <div v-if="books.data.length === 0" class="alert alert-warning mb-6">
+          <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+          <span>該当する書籍が見つかりませんでした。条件を変更して再検索してください。</span>
+        </div>
 
-          <div v-else class="overflow-x-auto">
-            <table class="table table-zebra w-full">
-              <thead>
-                <tr>
-                  <th>ISBN</th>
-                  <th>タイトル</th>
-                  <th>著者</th>
-                  <th>出版社</th>
-                  <th>出版日</th>
-                  <th>価格</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="book in books.data" :key="book.id">
-                  <td>{{ book.isbn }}</td>
-                  <td class="font-bold">{{ book.title }}<br><span class="text-sm font-normal text-gray-500" v-if="book.subtitle">{{ book.subtitle }}</span></td>
-                  <td>{{ book.contributor }}</td>
-                  <td>{{ book.publisher }}</td>
-                  <td>{{ book.published_date }}</td>
-                  <td>{{ book.price ? `${book.price}円` : '-' }}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div v-else class="flex flex-col gap-4">
+          <div v-for="book in books.data" :key="book.id" class="card card-side bg-base-100 shadow-sm border border-base-300 rounded-none overflow-hidden">
+            <figure v-if="book.image_url" class="w-48 shrink-0 border-r border-base-300">
+              <img :src="book.image_url" :alt="book.title" class="object-cover w-full h-full" />
+            </figure>
+            <div class="card-body p-6">
+              <h2 class="text-xl font-bold mb-1">
+                {{ book.title }}
+                <span v-if="book.subtitle" class="text-lg font-normal ml-2">{{ book.subtitle }}</span>
+              </h2>
+              <div class="text-sm text-gray-700 mb-4">
+                {{ book.contributor }} <span class="ml-2">ISBN:{{ book.isbn }}</span>
+              </div>
+              <p class="whitespace-pre-wrap text-sm text-gray-800 mb-6">{{ book.content }}</p>
 
-          <!-- ページネーション -->
-          <div class="flex justify-center mt-6" v-if="books.links && books.links.length > 3">
-            <div class="join">
-              <template v-for="(link, i) in books.links" :key="i">
-                <button
-                  v-if="link.url"
-                  @click="goToPage(link.url)"
-                  class="join-item btn"
-                  :class="{'btn-active': link.active}"
-                  v-html="link.label"
-                ></button>
-                <button
-                  v-else
-                  class="join-item btn btn-disabled"
-                  v-html="link.label"
-                ></button>
-              </template>
+              <div class="text-sm font-semibold text-gray-800 mb-4">
+                発行元出版社:{{ book.publisher }} <span v-if="book.imprint && book.imprint !== book.publisher">/ 販売元出版社:{{ book.imprint }}</span> / 価格:{{ book.price ? book.price + '円' : '-' }}
+              </div>
+
+              <div class="card-actions flex gap-2">
+                <a :href="book.amazon_url" v-if="book.amazon_url" target="_blank" class="btn btn-primary btn-sm px-6 rounded text-white bg-[#007bff] hover:bg-[#0056b3] border-none">
+                  Amazon
+                </a>
+                <a :href="book.honto_url" v-if="book.honto_url" target="_blank" class="btn btn-primary btn-sm px-6 rounded text-white bg-[#007bff] hover:bg-[#0056b3] border-none">
+                  honto
+                </a>
+              </div>
             </div>
+          </div>
+        </div>
+
+        <!-- ページネーション -->
+        <div class="flex justify-center mt-6" v-if="books.links && books.links.length > 3">
+          <div class="join">
+            <template v-for="(link, i) in books.links" :key="i">
+              <button
+                v-if="link.url"
+                @click="goToPage(link.url)"
+                class="join-item btn"
+                :class="{'btn-active': link.active}"
+                v-html="link.label"
+              ></button>
+              <button
+                v-else
+                class="join-item btn btn-disabled"
+                v-html="link.label"
+              ></button>
+            </template>
           </div>
         </div>
       </div>
